@@ -32,7 +32,7 @@ namespace SLua
 	using System.Reflection;
 	using Debug = UnityEngine.Debug;
 
-	public class LuaSvr 
+	public partial class LuaSvr
 	{
 		public LuaState luaState;
 		static LuaSvrGameObject lgo;
@@ -184,18 +184,6 @@ namespace SLua
 				}
 			}));
         }
-
-		public object start(string main)
-		{
-			if (main != null)
-			{
-				luaState.doFile(main);
-				LuaFunction func = (LuaFunction)luaState["main"];
-				if(func!=null)
-					return func.call();
-			}
-			return null;
-		}
 
 		void tick()
 		{

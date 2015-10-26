@@ -19,72 +19,35 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using UnityEngine;
 
-namespace SLua
-{
-	using UnityEngine;
-	using System.Collections;
-	using SLua;
-	using System;
-	using System.Net;
-	using System.Net.Sockets;
-	using LuaInterface;
-	using System.IO;
+namespace SLua {
 
-	public class LuaSvrGameObject : MonoBehaviour
-	{
-
-		public LuaState state;
-		public Action onUpdate;
-		public bool skipDebugger = true;
-		DebugInterface di;
-
-		// make sure lua state finalize at last
-		// make sure LuaSvrGameObject excute order is max(9999)
-		void OnDestroy()
-		{
-			if (state != null)
-			{
-				if (di != null)
-				{
-					di.close();
-					di = null;
-				}
-
-				state.Close();
-				state = null;
-			}
+	public partial class LuaSvr {
+		const string initializedScript = 
+@"
+import 'UnityEngine'
+import 'Nacho'
+import 'Scaleform'
+";
+		public static LuaSvr m_instance;
+		public static LuaSvr Instance {
+			get { return (m_instance ?? (m_instance = new LuaSvr())); }
 		}
 
-		public void init() {
-			di = new DebugInterface(state);
-			di.init();
+		public static LuaTable CreateTable() {
+			return new LuaTable(Instance.luaState);
 		}
 
-
-		void Update()
-		{
-			if (onUpdate != null) onUpdate();
-			if (di != null) di.update();
+		public object start(string main) {
+			luaState.doString(initializedScript);
+			//if (main != null) {
+			//	luaState.doFile(main);
+			//	LuaFunction func = (LuaFunction)luaState["main"];
+			//	if (func != null)
+			//		return func.call();
+			//}
+			return null;
 		}
-
-
-		void OnGUI()
-		{
-			if (skipDebugger || di.isStarted)
-			{
-				skipDebugger = true;
-				return;
-			}
-
-			int w = Screen.width;
-			int h = Screen.height;
-			if (!skipDebugger && GUI.Button(new Rect((w - 300) / 2, (h - 100) / 2, 300, 100), "Waiting for debug connection\nPress this button to skip debugging."))
-			{
-				skipDebugger = true;
-			}
-		}
-
-
 	}
 }
