@@ -207,7 +207,7 @@ namespace SLua
 		static public bool checkType(IntPtr l, int p, out long v)
 		{
 #if LUA_5_3
-            v = LuaDLL.luaL_checkinteger(l, p);
+            v = (long)LuaDLL.luaL_checkinteger(l, p);
 #else
 			v = (long)LuaDLL.luaL_checknumber(l, p);
 #endif
@@ -243,7 +243,7 @@ namespace SLua
 		static public bool checkType(IntPtr l, int p, out ulong v)
 		{
 #if LUA_5_3
-			v = LuaDLL.luaL_checkinteger(l, p);
+			v = (ulong)LuaDLL.luaL_checkinteger(l, p);
 #else
 			v = (ulong)LuaDLL.luaL_checknumber(l, p);
 #endif
@@ -253,7 +253,7 @@ namespace SLua
 		public static void pushValue(IntPtr l, ulong o)
 		{
 			#if LUA_5_3
-			LuaDLL.lua_lua_pushinteger(l,o);
+			LuaDLL.lua_pushinteger(l, (long)o);
 			#else
 			LuaDLL.lua_pushnumber(l, o);
 			#endif
@@ -508,7 +508,7 @@ namespace SLua
 
 		public static void pushValue(IntPtr l, LuaCSFunction f)
 		{
-			LuaDLL.lua_pushcsfunction(l,f);
+			LuaState.pushcsfunction (l, f);
 		}
 		
 		public static void pushValue(IntPtr l, LuaTable t)
@@ -579,6 +579,19 @@ namespace SLua
 			return true;
 		}
 		#endregion
+
+		static public bool checkNullable<T>(IntPtr l, int p, out Nullable<T> v) where T : struct
+		{
+			if (LuaDLL.lua_isnil(l, p))
+				v = null;
+			else
+			{
+				object o=checkVar(l, p, typeof(T));
+				if (o == null) v = null;
+				else v = new Nullable<T>((T)o);
+			}
+			return true;
+		}
 
 		#region object
 		static public bool checkType<T>(IntPtr l, int p, out T o) where T:class

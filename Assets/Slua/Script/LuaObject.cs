@@ -89,7 +89,7 @@ namespace SLua
 		delegate void PushVarDelegate(IntPtr l, object o);
 		static Dictionary<Type, PushVarDelegate> typePushMap = new Dictionary<Type, PushVarDelegate>();
 
-		internal const int VersionNumber = 0x1000;
+		internal const int VersionNumber = 0x1001;
 
 		public static void init(IntPtr l)
 		{
@@ -593,7 +593,7 @@ return index
 
 			if (con == null) con = noConstructor;
 
-			LuaDLL.lua_pushcsfunction(l, con);
+			pushValue(l, con);
 			LuaDLL.lua_setfield(l, -2, "__call");
 
 			LuaDLL.lua_pushcfunction(l, typeToString);
@@ -618,34 +618,29 @@ return index
 			newindex_func.push(l);
 			LuaDLL.lua_setfield(l, -2, "__newindex");
 
-			LuaDLL.lua_pushcsfunction(l, lua_add);
+			pushValue(l, lua_add);
 			LuaDLL.lua_setfield(l, -2, "__add");
-			LuaDLL.lua_pushcsfunction(l, lua_sub);
+			pushValue(l, lua_sub);
 			LuaDLL.lua_setfield(l, -2, "__sub");
-			LuaDLL.lua_pushcsfunction(l, lua_mul);
+			pushValue(l, lua_mul);
 			LuaDLL.lua_setfield(l, -2, "__mul");
-			LuaDLL.lua_pushcsfunction(l, lua_div);
+			pushValue(l, lua_div);
 			LuaDLL.lua_setfield(l, -2, "__div");
-			LuaDLL.lua_pushcsfunction(l, lua_unm);
+			pushValue(l, lua_unm);
 			LuaDLL.lua_setfield(l, -2, "__unm");
-			LuaDLL.lua_pushcsfunction(l, lua_eq);
+			pushValue(l, lua_eq);
 			LuaDLL.lua_setfield(l, -2, "__eq");
-            LuaDLL.lua_pushcsfunction(l, lua_le);
+            pushValue(l, lua_le);
             LuaDLL.lua_setfield(l, -2, "__le");
-            LuaDLL.lua_pushcsfunction(l, lua_lt);
+            pushValue(l, lua_lt);
             LuaDLL.lua_setfield(l, -2, "__lt");
-			LuaDLL.lua_pushcsfunction(l, lua_tostring);
+			pushValue(l, lua_tostring);
 			LuaDLL.lua_setfield(l, -2, "__tostring");
 
 			LuaDLL.lua_pushcfunction(l, lua_gc);
 			LuaDLL.lua_setfield(l, -2, "__gc");
-			
-			if (self.IsValueType && (
-				self.Name=="Vector2" ||
-				self.Name=="Vector3" ||
-				self.Name=="Vector4" ||
-				self.Name=="Color" ||
-				self.Name=="Quaternion"))
+
+			if (self.IsValueType && isImplByLua(self))
 			{
 				LuaDLL.lua_pushvalue(l, -1);
                 LuaDLL.lua_setglobal(l, self.FullName + ".Instance");
@@ -653,12 +648,23 @@ return index
 			LuaDLL.lua_setfield(l, LuaIndexes.LUA_REGISTRYINDEX,  ObjectCache.getAQName(self));
 		}
 
+
+		public static bool isImplByLua(Type t)
+		{
+			return t == typeof(Color)
+				|| t == typeof(Vector2)
+				|| t == typeof(Vector3)
+				|| t == typeof(Vector4)
+				|| t == typeof(Quaternion);
+		}
+
+
 		public static void reg(IntPtr l, LuaCSFunction func, string ns)
 		{
             checkMethodValid(func);
 
             newTypeTable(l, ns);
-			LuaDLL.lua_pushcsfunction(l, func);
+			pushValue(l, func);
 			LuaDLL.lua_setfield(l, -2, func.Method.Name);
 			LuaDLL.lua_pop(l, 1);
 		}
@@ -667,7 +673,7 @@ return index
 		{
             checkMethodValid(func);
 
-			LuaDLL.lua_pushcsfunction(l, func);
+			pushValue(l, func);
 			string name = func.Method.Name;
 			if (name.EndsWith("_s"))
 			{
@@ -682,7 +688,7 @@ return index
 		{
             checkMethodValid(func);
 
-			LuaDLL.lua_pushcsfunction(l, func);
+			pushValue(l, func);
 			string name = func.Method.Name;
 			LuaDLL.lua_setfield(l, instance ? -2 : -3, name);
 		}
@@ -698,13 +704,13 @@ return index
 			if (get == null)
 				LuaDLL.lua_pushnil(l);
 			else
-				LuaDLL.lua_pushcsfunction(l, get);
+				pushValue(l, get);
 			LuaDLL.lua_rawseti(l, -2, 1);
 
 			if (set == null)
 				LuaDLL.lua_pushnil(l);
 			else
-				LuaDLL.lua_pushcsfunction(l, set);
+				pushValue(l, set);
 			LuaDLL.lua_rawseti(l, -2, 2);
 
 			LuaDLL.lua_setfield(l, t, name);
@@ -765,7 +771,6 @@ return index
 			LuaDLL.lua_pushcfunction(l, LuaState.errorFunc);
 			return LuaDLL.lua_gettop(l);
 		}
-
 
 
 		public static bool matchType(IntPtr l, int p, LuaTypes lt, Type t)
@@ -838,7 +843,7 @@ return index
 			return true;
 		}
 
-		static bool isLuaClass(IntPtr l, int p)
+		public static bool isLuaClass(IntPtr l, int p)
 		{
 			return LuaDLL.luaS_subclassof(l, p, null) == 1;
 		}
@@ -1055,10 +1060,10 @@ return index
 
         static public object checkVar(IntPtr l, int p, Type t)
         {
-            object obj = checkVar(l, p);
+			object obj = checkVar(l, p);
             try
             {
-                return Convert.ChangeType(obj, t);
+                return obj==null?null:Convert.ChangeType(obj, t);
             }
             catch(Exception) {
 				throw new Exception(string.Format("parameter {0} expected {1}, got {2}", p, t.Name, obj == null ? "null" : obj.GetType().Name));
@@ -1247,7 +1252,7 @@ return index
             LuaDLL.luaS_setDataVec(l, 1, v.r, v.g, v.b, v.a);
         }
 
-        internal static int extractFunction(IntPtr l, int p)
+        public static int extractFunction(IntPtr l, int p)
 		{
 			int op = 0;
 			LuaTypes t = LuaDLL.lua_type(l, p);

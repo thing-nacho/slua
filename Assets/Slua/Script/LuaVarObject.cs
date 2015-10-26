@@ -48,29 +48,20 @@ namespace SLua
 
 			bool matchType(IntPtr l, int p, LuaTypes lt, Type t)
 			{
-				string tn = t.Name;
+				if (t.IsPrimitive)
+					return lt == LuaTypes.LUA_TNUMBER;
 
-				switch (tn)
+				if (t == typeof(string))
+					return lt == LuaTypes.LUA_TSTRING;
+
+				switch (lt)
 				{
-					case "String":
-						return lt == LuaTypes.LUA_TSTRING;
-					case "Int32":
-					case "Uint32":
-					case "Single":
-					case "Double":
-						return lt == LuaTypes.LUA_TNUMBER;
+					case LuaTypes.LUA_TFUNCTION:
+						return t==typeof(LuaFunction) || t.BaseType == typeof(MulticastDelegate);
+					case LuaTypes.LUA_TTABLE:
+						return t == typeof(LuaTable) || LuaObject.luaTypeCheck(l, p, t.Name);
 					default:
-						{
-							switch (lt)
-							{
-								case LuaTypes.LUA_TFUNCTION:
-									return tn == "LuaFunction" || t.BaseType == typeof(MulticastDelegate);
-								case LuaTypes.LUA_TTABLE:
-									return tn == "LuaTable" || LuaObject.luaTypeCheck(l, p, tn);
-								default:
-									return lt == LuaTypes.LUA_TUSERDATA || tn == "Object";
-							}
-						}
+						return lt == LuaTypes.LUA_TUSERDATA || t == typeof(object);
 				}
 			}
 
@@ -412,16 +403,16 @@ IndexProperty:
 		static new public void init(IntPtr l)
 		{
 			LuaDLL.lua_createtable(l, 0, 3);
-			LuaDLL.lua_pushcsfunction(l, luaIndex);
+			pushValue(l, luaIndex);
 			LuaDLL.lua_setfield(l, -2, "__index");
-			LuaDLL.lua_pushcsfunction(l, luaNewIndex);
+			pushValue(l, luaNewIndex);
 			LuaDLL.lua_setfield(l, -2, "__newindex");
 			LuaDLL.lua_pushcfunction(l, lua_gc);
 			LuaDLL.lua_setfield(l, -2, "__gc");
 			LuaDLL.lua_setfield(l, LuaIndexes.LUA_REGISTRYINDEX, "LuaVarObject");
 
 			LuaDLL.lua_createtable(l, 0, 1);
-			LuaDLL.lua_pushcsfunction(l, methodWrapper);
+			pushValue(l, methodWrapper);
 			LuaDLL.lua_setfield(l, -2, "__call");
 			LuaDLL.lua_setfield(l, LuaIndexes.LUA_REGISTRYINDEX, ObjectCache.getAQName(typeof(LuaCSFunction)));
 		}
