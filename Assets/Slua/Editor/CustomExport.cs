@@ -108,6 +108,7 @@ namespace SLua
              "ADBannerView",
             "ADInterstitialAd",            
             "Android",
+			"Tizen",
             "jvalue",
             "iPhone",
             "iOS",

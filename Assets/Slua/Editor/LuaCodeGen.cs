@@ -33,6 +33,7 @@ namespace SLua
 	using System.Text;
 	using System.Text.RegularExpressions;
 
+	public interface ICustomExportPost { }
 
 	public class ConnectDebugger : EditorWindow
 	{
@@ -273,14 +274,34 @@ namespace SLua
             }
 
             CustomExport.OnAddCustomClass(fun);
+
+
 			
+			//detect interface ICustomExportPost,and call OnAddCustomClass
+			InvokeEditorMethod<ICustomExportPost>("OnAddCustomClass",new object[]{fun});
+
+
 			GenerateBind(exports, "BindCustom", 3, path);
             if(autoRefresh)
 			    AssetDatabase.Refresh();
 			
 			Debug.Log("Generate custom interface finished");
 		}
-		
+
+		static private void InvokeEditorMethod<T>(string methodName,object[] parameters){
+			System.Reflection.Assembly editorAssembly = System.Reflection.Assembly.Load("Assembly-CSharp-Editor");
+			Type[] editorTypes = editorAssembly.GetExportedTypes();
+			foreach (Type t in editorTypes)
+			{
+				if(typeof(T).IsAssignableFrom(t)){
+					System.Reflection.MethodInfo method =  t.GetMethod(methodName,System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+					if(method != null){
+						method.Invoke(null,parameters);
+					}
+				}
+			}
+		}
+
 		[MenuItem("SLua/3rdDll/Make")]
 		static public void Generate3rdDll()
 		{
@@ -291,6 +312,10 @@ namespace SLua
 			List<Type> cust = new List<Type>();
 			List<string> assemblyList = new List<string>();
 			CustomExport.OnAddCustomAssembly(ref assemblyList);
+
+			//detect interface ICustomExportPost,and call OnAddCustomAssembly
+			InvokeEditorMethod<ICustomExportPost>("OnAddCustomAssembly",new object[]{assemblyList});
+
 			foreach (string assemblyItem in assemblyList)
 			{
 				Assembly assembly = Assembly.Load(assemblyItem);
@@ -422,12 +447,48 @@ namespace SLua
 			"Motion.isHumanMotion",
 #endif
         };
+
+
+		static Dictionary<System.Type,List<MethodInfo>> GenerateExtensionMethodsMap(){
+			Dictionary<System.Type,List<MethodInfo>> dic = new Dictionary<Type, List<MethodInfo>>();
+			Assembly assembly = Assembly.Load("Assembly-CSharp");
+			foreach(System.Type type in assembly.GetExportedTypes()){
+				if(type.IsSealed && !type.IsGenericType && !type.IsNested){
+					MethodInfo[] methods = type.GetMethods(BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic);
+					foreach(MethodInfo method in methods){
+						if(IsExtensionMethod(method)){
+							System.Type extendedType = method.GetParameters()[0].ParameterType;
+							if(!dic.ContainsKey(extendedType)){
+								dic.Add(extendedType,new List<MethodInfo>());
+							}
+							dic[extendedType].Add(method);
+						}
+					}
+				}
+			}
+			return dic;
+		}
+
+		static bool IsExtensionMethod(MethodBase method){
+			return method.IsDefined(typeof(System.Runtime.CompilerServices.ExtensionAttribute),false);
+		}
+
+
+
+		static Dictionary<System.Type,List<MethodInfo>> extensionMethods = new Dictionary<Type, List<MethodInfo>>();
+
+		static CodeGenerator(){
+			extensionMethods = GenerateExtensionMethodsMap();
+		}
+
 		HashSet<string> funcname = new HashSet<string>();
 		Dictionary<string, bool> directfunc = new Dictionary<string, bool>();
 		
 		public string givenNamespace;
         public string path;
-		
+		public bool includeExtension = SLuaSetting.Instance.exportExtensionMethod;
+		public EOL eol = SLuaSetting.Instance.eol;
+
 		class PropPair
 		{
 			public string get = "null";
@@ -443,6 +504,7 @@ namespace SLua
 			HashSet<Type> exported = new HashSet<Type>();
 			string f = path + name + ".cs";
 			StreamWriter file = new StreamWriter(f, false, Encoding.UTF8);
+			file.NewLine = NewLine;
 			Write(file, "using System;");
 			Write(file, "using System.Collections.Generic;");
 			Write(file, "namespace SLua {");
@@ -505,6 +567,7 @@ namespace SLua
 						f = path + "LuaDelegate_" + _Name(t.FullName) + ".cs";
 					}
 					StreamWriter file = new StreamWriter(f, false, Encoding.UTF8);
+					file.NewLine = NewLine;
 					WriteDelegate(t, file);
 					file.Close();
 					return false;
@@ -518,7 +581,7 @@ namespace SLua
 					StreamWriter file = Begin(t);
 					WriteHead(t, file);
 					WriteConstructor(t, file);
-					WriteFunction(t, file);
+					WriteFunction(t, file,false);
 					WriteFunction(t, file, true);
 					WriteField(t, file);
 					RegFunction(t, file);
@@ -528,6 +591,7 @@ namespace SLua
 					{
 						string f = path + "LuaUnityEvent_" + _Name(GenericName(t.BaseType)) + ".cs";
 						file = new StreamWriter(f, false, Encoding.UTF8);
+						file.NewLine = NewLine;
 						WriteEvent(t, file);
 						file.Close();
 					}
@@ -793,6 +857,7 @@ namespace SLua
 			string clsname = ExportName(t);
 			string f = path + clsname + ".cs";
 			StreamWriter file = new StreamWriter(f, false, Encoding.UTF8);
+			file.NewLine = NewLine;
 			return file;
 		}
 		
@@ -823,7 +888,15 @@ namespace SLua
 				bf |= BindingFlags.Instance;
 			
 			MethodInfo[] members = t.GetMethods(bf);
-			foreach (MethodInfo mi in members)
+			List<MethodInfo> methods = new List<MethodInfo>();
+			methods.AddRange(members);
+
+			if(!writeStatic && this.includeExtension){
+				if(extensionMethods.ContainsKey(t)){
+					methods.AddRange(extensionMethods[t]);
+				}
+			}
+			foreach (MethodInfo mi in methods)
 			{
 				bool instanceFunc;
 				if (writeStatic && isPInvoke(mi, out instanceFunc))
@@ -833,7 +906,6 @@ namespace SLua
 				}
 				
 				string fn = writeStatic ? staticName(mi.Name) : mi.Name;
-				
 				if (mi.MemberType == MemberTypes.Method
 				    && !IsObsolete(mi)
 				    && !DontExport(mi)
@@ -847,7 +919,7 @@ namespace SLua
 				}
 			}
 		}
-		
+
 		bool isPInvoke(MethodInfo mi, out bool instanceFunc)
 		{
 			object[] attrs = mi.GetCustomAttributes(typeof(MonoPInvokeCallbackAttribute), false);
@@ -877,7 +949,24 @@ namespace SLua
 		{
 			return t.GetCustomAttributes(typeof(ObsoleteAttribute), false).Length > 0;
 		}
-		
+
+		string NewLine{
+			get{
+				switch(eol){
+				case EOL.Native:
+					return System.Environment.NewLine;
+				case EOL.CRLF:
+					return "\r\n";
+				case EOL.CR:
+					return "\r";
+				case EOL.LF:
+					return "\n";
+				default:
+					return "";
+				}
+			}
+		}
+
 		void RegFunction(Type t, StreamWriter file)
 		{
 			// Write export function
@@ -1452,10 +1541,10 @@ namespace SLua
 			return ret;
 		}
 		
-		string TypeDecl(ParameterInfo[] pars)
+		string TypeDecl(ParameterInfo[] pars,int paraOffset = 0)
 		{
 			string ret = "";
-			for (int n = 0; n < pars.Length; n++)
+			for (int n = paraOffset; n < pars.Length; n++)
 			{
 				ret += ",typeof(";
                 if (pars[n].IsOut)
@@ -1472,12 +1561,12 @@ namespace SLua
 			if (method.Name != "GetType" && method.Name != "GetHashCode" && method.Name != "Equals" &&
 			    method.Name != "ToString" && method.Name != "Clone" &&
 			    method.Name != "GetEnumerator" && method.Name != "CopyTo" &&
-			    method.Name != "op_Implicit" &&
+			    method.Name != "op_Implicit" && method.Name != "op_Explicit" &&
 			    !method.Name.StartsWith("get_", StringComparison.Ordinal) &&
 			    !method.Name.StartsWith("set_", StringComparison.Ordinal) &&
 			    !method.Name.StartsWith("add_", StringComparison.Ordinal) &&
 			    !IsObsolete(method) && !method.IsGenericMethod &&
-			    //!method.Name.StartsWith("op_", StringComparison.Ordinal) &&
+				method.ToString() != "Int32 Clamp(Int32, Int32, Int32)" &&
 			    !method.Name.StartsWith("remove_", StringComparison.Ordinal))
 			{
 				return true;
@@ -1494,7 +1583,22 @@ namespace SLua
 		
 		MethodBase[] GetMethods(Type t, string name, BindingFlags bf)
 		{
+
 			List<MethodBase> methods = new List<MethodBase>();
+
+			if(this.includeExtension && ((bf&BindingFlags.Instance) == BindingFlags.Instance)){
+				if(extensionMethods.ContainsKey(t)){
+					foreach(MethodInfo m in extensionMethods[t]){
+						if(m.Name == name 
+						   && !IsObsolete(m)
+						   && !DontExport(m)
+						   && isUsefullMethod(m)){
+							methods.Add(m);
+						}
+					}
+				}
+			}
+
 			MemberInfo[] cons = t.GetMember(name, bf);
 			foreach (MemberInfo m in cons)
 			{
@@ -1509,16 +1613,18 @@ namespace SLua
                return a.GetParameters().Length - b.GetParameters().Length;
            });
 			return methods.ToArray();
+
 		}
 		
 		void WriteFunctionImpl(StreamWriter file, MethodInfo m, Type t, BindingFlags bf)
 		{
 			WriteTry(file);
 			MethodBase[] cons = GetMethods(t, m.Name, bf);
+
 			if (cons.Length == 1) // no override function
 			{
 				if (isUsefullMethod(m) && !m.ReturnType.ContainsGenericParameters && !m.ContainsGenericParameters) // don't support generic method
-					WriteFunctionCall(m, file, t);
+					WriteFunctionCall(m, file, t,bf);
 				else
 				{
 					WriteError(file, "No matched override function to call");
@@ -1526,6 +1632,7 @@ namespace SLua
 			}
 			else // 2 or more override function
 			{
+
 				Write(file, "int argc = LuaDLL.lua_gettop(l);");
 				
 				bool first = true;
@@ -1540,11 +1647,12 @@ namespace SLua
 						    && !mi.ReturnType.ContainsGenericParameters
 						    /*&& !ContainGeneric(pars)*/) // don't support generic method
 						{
+							bool isExtension = IsExtensionMethod(mi) && (bf & BindingFlags.Instance) == BindingFlags.Instance;
 							if (isUniqueArgsCount(cons, mi))
 								Write(file, "{0}(argc=={1}){{", first ? "if" : "else if", mi.IsStatic ? mi.GetParameters().Length : mi.GetParameters().Length + 1);
 							else
-								Write(file, "{0}(matchType(l,argc,{1}{2})){{", first ? "if" : "else if", mi.IsStatic ? 1 : 2, TypeDecl(pars));
-							WriteFunctionCall(mi, file, t);
+								Write(file, "{0}(matchType(l,argc,{1}{2})){{", first ? "if" : "else if", mi.IsStatic&&!isExtension ? 1 : 2, TypeDecl(pars,isExtension?1:0));
+							WriteFunctionCall(mi, file, t,bf);
 							Write(file, "}");
 							first = false;
 						}
@@ -1581,24 +1689,28 @@ namespace SLua
 			else
 				Write(file, "{0} self=({0})checkSelf(l);", TypeDecl(t));
 		}
-		private void WriteFunctionCall(MethodInfo m, StreamWriter file, Type t)
+
+
+		private void WriteFunctionCall(MethodInfo m, StreamWriter file, Type t,BindingFlags bf)
 		{
-			
-			
+
+			bool isExtension = IsExtensionMethod(m) && (bf&BindingFlags.Instance) == BindingFlags.Instance;
 			bool hasref = false;
 			ParameterInfo[] pars = m.GetParameters();
-			
+
+
 			int argIndex = 1;
-			if (!m.IsStatic)
+			int parOffset = 0;
+			if (!m.IsStatic )
 			{
 				WriteCheckSelf(file, t);
 				argIndex++;
 			}
-			
-			
-			
-			
-			for (int n = 0; n < pars.Length; n++)
+			else if(isExtension){
+				WriteCheckSelf(file, t);
+				parOffset ++;
+			}
+			for (int n = parOffset; n < pars.Length; n++)
 			{
 				ParameterInfo p = pars[n];
 				string pn = p.ParameterType.Name;
@@ -1617,7 +1729,7 @@ namespace SLua
 				ret = "var ret=";
 			}
 			
-			if (m.IsStatic)
+			if (m.IsStatic && !isExtension)
 			{
 				if (m.Name == "op_Multiply")
 					Write(file, "{0}a1*a2;", ret);
@@ -1641,11 +1753,13 @@ namespace SLua
 					Write(file, "{0}(a1<=a2);", ret);
 				else if (m.Name == "op_GreaterThanOrEqual")
 					Write(file, "{0}(a2<=a1);", ret);
-				else
+				else{
 					Write(file, "{3}{2}.{0}({1});", m.Name, FuncCall(m), TypeDecl(t), ret);
+				}
 			}
-			else
-				Write(file, "{2}self.{0}({1});", m.Name, FuncCall(m), ret);
+			else{
+				Write(file, "{2}self.{0}({1});", m.Name, FuncCall(m,parOffset), ret);
+			}
 
 			WriteOk(file);
 			int retcount = 1;
@@ -1723,6 +1837,9 @@ namespace SLua
 		
 		void Write(StreamWriter file, string fmt, params object[] args)
 		{
+
+			fmt = System.Text.RegularExpressions.Regex.Replace(fmt, @"\r\n?|\n|\r", NewLine);
+
 			if (fmt.StartsWith("}")) indent--;
 			
 			for (int n = 0; n < indent; n++)
@@ -1846,12 +1963,12 @@ namespace SLua
 			return FullName(t.FullName);
 		}
 		
-		string FuncCall(MethodBase m)
+		string FuncCall(MethodBase m,int parOffset = 0)
 		{
 			
 			string str = "";
 			ParameterInfo[] pars = m.GetParameters();
-			for (int n = 0; n < pars.Length; n++)
+			for (int n = parOffset; n < pars.Length; n++)
 			{
 				ParameterInfo p = pars[n];
 				if (p.ParameterType.IsByRef && p.IsOut)
