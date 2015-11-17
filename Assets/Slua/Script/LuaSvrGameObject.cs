@@ -36,8 +36,10 @@ namespace SLua
 
 		public LuaState state;
 		public Action onUpdate;
+#if UNITY_EDITOR
 		public bool skipDebugger = true;
 		DebugInterface di;
+#endif
 
 		// make sure lua state finalize at last
 		// make sure LuaSvrGameObject excute order is max(9999)
@@ -45,14 +47,13 @@ namespace SLua
 		{
 			if (state != null)
 			{
+#if UNITY_EDITOR
 				if (di != null)
 				{
 					di.close();
 					di = null;
 				}
-
-				// Main state shouldn't dispose until app quit due to some mono behaviour use state on disposed
-				// 
+#endif
 
 				//state.Dispose();
 				//state = null;
@@ -60,18 +61,22 @@ namespace SLua
 		}
 
 		public void init() {
+#if UNITY_EDITOR
 			di = new DebugInterface(state);
 			di.init();
+#endif
 		}
 
 
 		void Update()
 		{
 			if (onUpdate != null) onUpdate();
+#if UNITY_EDITOR
 			if (di != null) di.update();
+#endif
 		}
 
-
+#if UNITY_EDITOR
 		void OnGUI()
 		{
 			if (skipDebugger || di.isStarted)
@@ -87,7 +92,8 @@ namespace SLua
 				skipDebugger = true;
 			}
 		}
+#endif
 
-		
+
 	}
 }

@@ -287,6 +287,21 @@ namespace SLua
 			return null;
 		}
 
+		public object callForExternalInterface(LuaTable t, string command, object[] a) {
+			int error = LuaObject.pushTry(state.L);
+
+			LuaObject.pushVar(state.L, t);
+			LuaObject.pushVar(state.L, command);
+
+			for (int i = 0; i < a.Length; ++i) {
+				LuaObject.pushVar(state.L, a[i]);
+			}
+			if (innerCall(a.Length + 2, error)) {
+				return state.topObjects(error - 1);
+			}
+			return null;
+		}
+
 	}
 
 	public class LuaTable : LuaVar, IEnumerable<LuaTable.TablePair>
@@ -329,6 +344,19 @@ namespace SLua
 		}
 
 		public object this[int index]
+		{
+			get
+			{
+				return state.getObject(valueref, index);
+			}
+
+			set
+			{
+				state.setObject(valueref, index, value);
+			}
+		}
+
+		public object this[object index] 
 		{
 			get
 			{
@@ -912,7 +940,6 @@ end
 		{
 			try
 			{
-				// Debug.Log(fn);
 				byte[] bytes;
 				if (loaderDelegate != null)
 					bytes = loaderDelegate(fn);

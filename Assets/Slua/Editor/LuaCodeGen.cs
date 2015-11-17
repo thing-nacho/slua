@@ -149,7 +149,7 @@ namespace SLua
 			CustomExport.OnGetUseList(out uselist);
 			
 			List<Type> exports = new List<Type>();
-            string path = Path + "Unity/";
+			string path = "Assets/Plugins/SLua_Managed/Unity/";
 			foreach (Type t in types)
 			{
 				if (filterType(t, noUseList, uselist) && Generate(t, path))
@@ -201,7 +201,7 @@ namespace SLua
 			Type[] types = assembly.GetExportedTypes();
 			
 			List<Type> exports = new List<Type>();
-            string path = Path + "Unity/";
+			string path = "Assets/Slua/Unity/";
 			foreach (Type t in types)
 			{
 				if (filterType(t,noUseList,uselist) && Generate(t,path))
@@ -274,20 +274,15 @@ namespace SLua
             }
 
             CustomExport.OnAddCustomClass(fun);
-
-
 			
-			//detect interface ICustomExportPost,and call OnAddCustomClass
 			InvokeEditorMethod<ICustomExportPost>("OnAddCustomClass",new object[]{fun});
-
-
 			GenerateBind(exports, "BindCustom", 3, path);
             if(autoRefresh)
 			    AssetDatabase.Refresh();
 			
 			Debug.Log("Generate custom interface finished");
 		}
-
+		
 		static private void InvokeEditorMethod<T>(string methodName,object[] parameters){
 			System.Reflection.Assembly editorAssembly = System.Reflection.Assembly.Load("Assembly-CSharp-Editor");
 			Type[] editorTypes = editorAssembly.GetExportedTypes();
@@ -301,7 +296,6 @@ namespace SLua
 				}
 			}
 		}
-
 		[MenuItem("SLua/3rdDll/Make")]
 		static public void Generate3rdDll()
 		{
@@ -312,10 +306,7 @@ namespace SLua
 			List<Type> cust = new List<Type>();
 			List<string> assemblyList = new List<string>();
 			CustomExport.OnAddCustomAssembly(ref assemblyList);
-
-			//detect interface ICustomExportPost,and call OnAddCustomAssembly
 			InvokeEditorMethod<ICustomExportPost>("OnAddCustomAssembly",new object[]{assemblyList});
-
 			foreach (string assemblyItem in assemblyList)
 			{
 				Assembly assembly = Assembly.Load(assemblyItem);
@@ -447,8 +438,6 @@ namespace SLua
 			"Motion.isHumanMotion",
 #endif
         };
-
-
 		static Dictionary<System.Type,List<MethodInfo>> GenerateExtensionMethodsMap(){
 			Dictionary<System.Type,List<MethodInfo>> dic = new Dictionary<Type, List<MethodInfo>>();
 			Assembly assembly = Assembly.Load("Assembly-CSharp");
@@ -468,19 +457,13 @@ namespace SLua
 			}
 			return dic;
 		}
-
 		static bool IsExtensionMethod(MethodBase method){
 			return method.IsDefined(typeof(System.Runtime.CompilerServices.ExtensionAttribute),false);
 		}
-
-
-
 		static Dictionary<System.Type,List<MethodInfo>> extensionMethods = new Dictionary<Type, List<MethodInfo>>();
-
 		static CodeGenerator(){
 			extensionMethods = GenerateExtensionMethodsMap();
 		}
-
 		HashSet<string> funcname = new HashSet<string>();
 		Dictionary<string, bool> directfunc = new Dictionary<string, bool>();
 		
@@ -488,7 +471,7 @@ namespace SLua
         public string path;
 		public bool includeExtension = SLuaSetting.Instance.exportExtensionMethod;
 		public EOL eol = SLuaSetting.Instance.eol;
-
+		
 		class PropPair
 		{
 			public string get = "null";
@@ -890,7 +873,6 @@ namespace SLua
 			MethodInfo[] members = t.GetMethods(bf);
 			List<MethodInfo> methods = new List<MethodInfo>();
 			methods.AddRange(members);
-
 			if(!writeStatic && this.includeExtension){
 				if(extensionMethods.ContainsKey(t)){
 					methods.AddRange(extensionMethods[t]);
@@ -906,6 +888,7 @@ namespace SLua
 				}
 				
 				string fn = writeStatic ? staticName(mi.Name) : mi.Name;
+				
 				if (mi.MemberType == MemberTypes.Method
 				    && !IsObsolete(mi)
 				    && !DontExport(mi)
@@ -919,7 +902,7 @@ namespace SLua
 				}
 			}
 		}
-
+		
 		bool isPInvoke(MethodInfo mi, out bool instanceFunc)
 		{
 			object[] attrs = mi.GetCustomAttributes(typeof(MonoPInvokeCallbackAttribute), false);
@@ -949,7 +932,7 @@ namespace SLua
 		{
 			return t.GetCustomAttributes(typeof(ObsoleteAttribute), false).Length > 0;
 		}
-
+		
 		string NewLine{
 			get{
 				switch(eol){
@@ -966,7 +949,6 @@ namespace SLua
 				}
 			}
 		}
-
 		void RegFunction(Type t, StreamWriter file)
 		{
 			// Write export function
@@ -1583,9 +1565,7 @@ namespace SLua
 		
 		MethodBase[] GetMethods(Type t, string name, BindingFlags bf)
 		{
-
 			List<MethodBase> methods = new List<MethodBase>();
-
 			if(this.includeExtension && ((bf&BindingFlags.Instance) == BindingFlags.Instance)){
 				if(extensionMethods.ContainsKey(t)){
 					foreach(MethodInfo m in extensionMethods[t]){
@@ -1598,7 +1578,6 @@ namespace SLua
 					}
 				}
 			}
-
 			MemberInfo[] cons = t.GetMember(name, bf);
 			foreach (MemberInfo m in cons)
 			{
@@ -1613,14 +1592,12 @@ namespace SLua
                return a.GetParameters().Length - b.GetParameters().Length;
            });
 			return methods.ToArray();
-
 		}
 		
 		void WriteFunctionImpl(StreamWriter file, MethodInfo m, Type t, BindingFlags bf)
 		{
 			WriteTry(file);
 			MethodBase[] cons = GetMethods(t, m.Name, bf);
-
 			if (cons.Length == 1) // no override function
 			{
 				if (isUsefullMethod(m) && !m.ReturnType.ContainsGenericParameters && !m.ContainsGenericParameters) // don't support generic method
@@ -1632,7 +1609,6 @@ namespace SLua
 			}
 			else // 2 or more override function
 			{
-
 				Write(file, "int argc = LuaDLL.lua_gettop(l);");
 				
 				bool first = true;
@@ -1689,19 +1665,16 @@ namespace SLua
 			else
 				Write(file, "{0} self=({0})checkSelf(l);", TypeDecl(t));
 		}
-
-
 		private void WriteFunctionCall(MethodInfo m, StreamWriter file, Type t,BindingFlags bf)
 		{
-
+			
 			bool isExtension = IsExtensionMethod(m) && (bf&BindingFlags.Instance) == BindingFlags.Instance;
 			bool hasref = false;
 			ParameterInfo[] pars = m.GetParameters();
-
-
+			
 			int argIndex = 1;
 			int parOffset = 0;
-			if (!m.IsStatic )
+			if (!m.IsStatic)
 			{
 				WriteCheckSelf(file, t);
 				argIndex++;
@@ -1837,9 +1810,7 @@ namespace SLua
 		
 		void Write(StreamWriter file, string fmt, params object[] args)
 		{
-
 			fmt = System.Text.RegularExpressions.Regex.Replace(fmt, @"\r\n?|\n|\r", NewLine);
-
 			if (fmt.StartsWith("}")) indent--;
 			
 			for (int n = 0; n < indent; n++)

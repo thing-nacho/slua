@@ -32,7 +32,7 @@ namespace SLua
 	using System.Reflection;
 	using Debug = UnityEngine.Debug;
 
-	public class LuaSvr 
+	public partial class LuaSvr
 	{
 		public LuaState luaState;
 		static LuaSvrGameObject lgo;
@@ -48,6 +48,7 @@ namespace SLua
 
 		public IEnumerator waitForDebugConnection(Action complete)
 		{
+#if UNITY_EDITOR
 			lgo.skipDebugger = false;
 			Debug.Log("Waiting for debug connection");
 			while (true)
@@ -55,8 +56,12 @@ namespace SLua
 				yield return new WaitForSeconds(0.1f);
 				if (lgo.skipDebugger) break;
 			}
+#else
+			yield return null;
+#endif
 			complete();
 		}
+
 
 		private volatile int bindProgress = 0;
 		private void doBind(object state)
@@ -71,15 +76,15 @@ namespace SLua
 			for (int n = 0; n < ams.Length;n++ )
 			{
 				Assembly a = ams[n];
-				Type[] ts = null;
-				try
-				{
-					ts = a.GetExportedTypes();
-				}
-				catch
-				{
-					continue;
-				}
+                Type[] ts = null;
+                try
+                {
+                    ts = a.GetExportedTypes();
+                }
+                catch
+                {
+                    continue;
+                }
 				for (int k = 0; k < ts.Length; k++)
 				{
 					Type t = ts[k];
@@ -103,7 +108,7 @@ namespace SLua
 			for (int n = 0; n < bindlist.Count; n++)
 			{
 				Type t = bindlist[n];
-				var sublist = (Action<IntPtr>[])t.GetMethod("GetBindList").Invoke(null, null);
+				var sublist = (Action<IntPtr>[]) t.GetMethod("GetBindList").Invoke(null,null);
 				list.AddRange(sublist);
 			}
 			
@@ -112,16 +117,9 @@ namespace SLua
 			int count = list.Count;
 			for (int n = 0; n < count; n++)
 			{
-				try
-				{
-					Action<IntPtr> action = list[n];
-					action(L);
-					bindProgress = (int)(((float)n / count) * 98.0) + 2;
-				}
-				catch (Exception e)
-				{
-					Debug.LogError(e);
-				}
+				Action<IntPtr> action = list[n];
+				action(L);
+				bindProgress = (int)(((float)n / count) * 98.0) + 2;
 			}
 			
 			bindProgress = 100;
@@ -202,18 +200,6 @@ namespace SLua
 				}
 			}));
         }
-
-		public object start(string main)
-		{
-			if (main != null)
-			{
-				luaState.doFile(main);
-				LuaFunction func = (LuaFunction)luaState["main"];
-				if(func!=null)
-					return func.call();
-			}
-			return null;
-		}
 
 		void tick()
 		{
