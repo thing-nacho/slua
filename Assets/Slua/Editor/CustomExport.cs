@@ -38,6 +38,8 @@ namespace SLua
 			add(typeof(string), "String");
 			add(typeof(Nettention.Proud.HostID), "HostID");
 			add(typeof(Nacho.DebugInfo.CurrentBundleVersion), "CurrentBundleVersion");
+			add(typeof(LitJson.JsonData), "JsonData");
+			add(typeof(LitJson.JsonMapper), "JsonMapper");
 			// add your custom class here
 			// add( type, typename)
 			// type is what you want to export
@@ -92,6 +94,7 @@ namespace SLua
             "RPC",
             "Network",
             "MasterServer",
+			"UNetWeaver",
             "BitStream",
             "HostData",
             "ConnectionTesterStatus",
