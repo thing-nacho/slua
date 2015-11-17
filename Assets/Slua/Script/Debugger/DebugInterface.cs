@@ -37,7 +37,7 @@ namespace SLua
 	using System.Text.RegularExpressions;
 	using System.Reflection;
 
-	class DebugInterface : LuaObject
+	public class DebugInterface : LuaObject
 	{
 		LuaState state;
 		Socket server;
