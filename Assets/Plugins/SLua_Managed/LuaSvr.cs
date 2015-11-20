@@ -60,6 +60,7 @@ namespace SLua
 			yield return null;
 #endif
 			complete();
+			yield break;
 		}
 
 
