@@ -25,8 +25,8 @@
 		8E04045F1BA881D900C60FB2 /* udp.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E04044B1BA881D900C60FB2 /* udp.c */; };
 		8E0404601BA881D900C60FB2 /* unix.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E04044D1BA881D900C60FB2 /* unix.c */; };
 		8E0404611BA881D900C60FB2 /* usocket.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E04044F1BA881D900C60FB2 /* usocket.c */; };
-		8E30D62C1BB2E820005B46EF /* lsproto.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E30D6281BB2E820005B46EF /* lsproto.c */; settings = {ASSET_TAGS = (); }; };
-		8E30D62D1BB2E820005B46EF /* sproto.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E30D62A1BB2E820005B46EF /* sproto.c */; settings = {ASSET_TAGS = (); }; };
+		8E30D62C1BB2E820005B46EF /* lsproto.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E30D6281BB2E820005B46EF /* lsproto.c */; };
+		8E30D62D1BB2E820005B46EF /* sproto.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E30D62A1BB2E820005B46EF /* sproto.c */; };
 		8E39FB4C1BA5955300B2114F /* fpconv.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E39FB471BA5955300B2114F /* fpconv.c */; };
 		8E39FB4D1BA5955300B2114F /* lua_cjson.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E39FB491BA5955300B2114F /* lua_cjson.c */; };
 		8E39FB4E1BA5955300B2114F /* strbuf.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E39FB4A1BA5955300B2114F /* strbuf.c */; };
@@ -44,8 +44,8 @@
 		8E39FB981BA5963E00B2114F /* varint.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E39FB8A1BA5963E00B2114F /* varint.c */; };
 		8E39FB991BA5963E00B2114F /* wmessage.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E39FB8C1BA5963E00B2114F /* wmessage.c */; };
 		8E39FB9C1BA5965100B2114F /* pbc-lua.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E39FB9B1BA5965100B2114F /* pbc-lua.c */; };
-		8E96E69C1BB3B44400542AF9 /* lsqlite3.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E96E69B1BB3B44400542AF9 /* lsqlite3.c */; settings = {ASSET_TAGS = (); }; };
-		8E96E69F1BB3B45000542AF9 /* sqlite3.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E96E69D1BB3B45000542AF9 /* sqlite3.c */; settings = {ASSET_TAGS = (); }; };
+		8E96E69C1BB3B44400542AF9 /* lsqlite3.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E96E69B1BB3B44400542AF9 /* lsqlite3.c */; };
+		8E96E69F1BB3B45000542AF9 /* sqlite3.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E96E69D1BB3B45000542AF9 /* sqlite3.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -470,7 +470,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"/Users/luzexi/Desktop/work/github/slua/build/luajit-2.1.0/src",
+					"/Users/macbuild/work/slua/build/luajit-2.1.0/src",
 					"$(PROJECT_DIR)",
 				);
 				ONLY_ACTIVE_ARCH = NO;
@@ -491,7 +491,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"/Users/luzexi/Desktop/work/github/slua/build/luajit-2.1.0/src",
+					"/Users/macbuild/work/slua/build/luajit-2.1.0/src",
 					"$(PROJECT_DIR)",
 				);
 				ONLY_ACTIVE_ARCH = NO;

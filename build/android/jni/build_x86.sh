@@ -1,7 +1,7 @@
 rm ./libluajit.a
 echo APP_ABI := x86>./Application.mk
-NDK=/Users/luzexi/Desktop/work/_Environment/android-ndk-r9
-NFK=$NDK/toolchains/x86-4.6/prebuilt/darwin-x86_64/bin/i686-linux-android-
+NDK=/Users/macbuild/work/android-ndk-r11b
+NFK=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64/bin/i686-linux-android-
 
 cd luajit/src
 make clean
